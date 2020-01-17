@@ -10,3 +10,4 @@ and then run
 ```
 python3 main.py
 ```
+Note for this to work you need the dataset [cats_vs_dogs](https://www.kaggle.com/c/dogs-vs-cats) (extracted) in your current directory 
