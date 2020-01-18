@@ -4,7 +4,8 @@ from torchvision import transforms
 import torch.nn.functional as F
 import torch.optim as optim
 from dataset import CvDDataset
-from model import CNN
+from model import CNN, CNN4Layers
+import argparse
 
 
 def get_n_params(model):
@@ -44,7 +45,16 @@ accuracy_list = []
 # Training settings
 n_features = 6  # number of feature maps
 
-model_cnn = CNN(input_size, n_features, output_size)
+parser = argparse.ArgumentParser(description='Train and test one of two CNN architectures')
+parser.add_argument('--model', type=str,
+                    help='an integer for the accumulator')
+
+args = parser.parse_args()
+if args.model=="CNN4Layers":
+    model_cnn = CNN4Layers(input_size, n_features, output_size)
+else:
+    model_cnn = CNN(input_size, n_features, output_size)
+
 optimizer = optim.SGD(model_cnn.parameters(), lr=0.01, momentum=0.5)
 print('Number of parameters: {}'.format(get_n_params(model_cnn)))
 
@@ -86,6 +96,8 @@ def test(model):
 
 
 if __name__ == "__main__":
+
+
     for epoch in range(0, 1):
         train(epoch, model_cnn)
         test(model_cnn)
