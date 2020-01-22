@@ -9,6 +9,7 @@ import argparse
 import torchvision
 import numpy as np
 from torch.utils.tensorboard import SummaryWriter
+
 writer = SummaryWriter('log_dir/experiment1')
 import matplotlib.pyplot as plt
 
@@ -55,14 +56,13 @@ parser.add_argument('--model', type=str,
                     help='an integer for the accumulator')
 
 args = parser.parse_args()
-if args.model=="CNN4Layers":
+if args.model == "CNN4Layers":
     model_cnn = CNN4Layers(input_size, n_features, output_size)
 else:
     model_cnn = CNN(input_size, n_features, output_size)
 
 optimizer = optim.SGD(model_cnn.parameters(), lr=0.01, momentum=0.5)
 print('Number of parameters: {}'.format(get_n_params(model_cnn)))
-
 
 ## log graph for tensorboard
 
@@ -72,16 +72,20 @@ images, labels = dataiter.next()
 writer.add_graph(model_cnn, images)
 
 classes = ("Cat", "Dog")
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+print("training on :", device)
+model_cnn.to(device)
 
 def matplotlib_imshow(img, one_channel=False):
     if one_channel:
         img = img.mean(dim=0)
-    img = img / 2 + 0.5     # unnormalize
+    img = img / 2 + 0.5  # unnormalize
     npimg = img.numpy()
     if one_channel:
         plt.imshow(npimg, cmap="Greys")
     else:
         plt.imshow(np.transpose(npimg, (1, 2, 0)))
+
 
 def images_to_probs(net, images):
     '''
@@ -107,20 +111,21 @@ def plot_classes_preds(net, images, labels):
     # plot the images in the batch, along with predicted and true labels
     fig = plt.figure(figsize=(12, 48))
     for idx in np.arange(4):
-        ax = fig.add_subplot(1, 4, idx+1, xticks=[], yticks=[])
+        ax = fig.add_subplot(1, 4, idx + 1, xticks=[], yticks=[])
         matplotlib_imshow(images[idx], one_channel=False)
         ax.set_title("{0}, {1:.1f}%\n(label: {2})".format(
             classes[preds[idx]],
             probs[idx] * 100.0,
             classes[labels[idx]]),
-                    color=("green" if preds[idx]==labels[idx].item() else "red"))
+            color=("green" if preds[idx] == labels[idx].item() else "red"))
     return fig
+
 
 def train(epoch, model):
     model.train()
-    running_loss=0
+    running_loss = 0
     for batch_idx, (data, target) in enumerate(train_loader):
-
+        data, target = data.to(device), target.to(device)
         optimizer.zero_grad()
         output = model(data)
         loss = F.nll_loss(output, target)
@@ -151,6 +156,8 @@ def test(model):
     test_loss = 0
     correct = 0
     for data, target in test_loader:
+        data, target = data.to(device), target.to(device)
+
         output = model(data)
 
         test_loss += F.nll_loss(output, target,
@@ -169,7 +176,6 @@ def test(model):
 
 if __name__ == "__main__":
 
-
-    for epoch in range(0, 10):
+    for epoch in range(0, 4):
         train(epoch, model_cnn)
         test(model_cnn)
