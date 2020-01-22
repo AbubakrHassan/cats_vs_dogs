@@ -6,6 +6,11 @@ import torch.optim as optim
 from dataset import CvDDataset
 from model import CNN, CNN4Layers
 import argparse
+import torchvision
+import numpy as np
+from torch.utils.tensorboard import SummaryWriter
+writer = SummaryWriter('log_dir/experiment1')
+import matplotlib.pyplot as plt
 
 
 def get_n_params(model):
@@ -43,7 +48,7 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 accuracy_list = []
 
 # Training settings
-n_features = 6  # number of feature maps
+n_features = 25  # number of feature maps
 
 parser = argparse.ArgumentParser(description='Train and test one of two CNN architectures')
 parser.add_argument('--model', type=str,
@@ -59,8 +64,61 @@ optimizer = optim.SGD(model_cnn.parameters(), lr=0.01, momentum=0.5)
 print('Number of parameters: {}'.format(get_n_params(model_cnn)))
 
 
+## log graph for tensorboard
+
+# get some random training images
+dataiter = iter(train_loader)
+images, labels = dataiter.next()
+writer.add_graph(model_cnn, images)
+
+classes = ("Cat", "Dog")
+
+def matplotlib_imshow(img, one_channel=False):
+    if one_channel:
+        img = img.mean(dim=0)
+    img = img / 2 + 0.5     # unnormalize
+    npimg = img.numpy()
+    if one_channel:
+        plt.imshow(npimg, cmap="Greys")
+    else:
+        plt.imshow(np.transpose(npimg, (1, 2, 0)))
+
+def images_to_probs(net, images):
+    '''
+    Generates predictions and corresponding probabilities from a trained
+    network and a list of images
+    '''
+    output = net(images)
+    # convert output probabilities to predicted class
+    _, preds_tensor = torch.max(output, 1)
+    preds = np.squeeze(preds_tensor.numpy())
+    return preds, [F.softmax(el, dim=0)[i].item() for i, el in zip(preds, output)]
+
+
+def plot_classes_preds(net, images, labels):
+    '''
+    Generates matplotlib Figure using a trained network, along with images
+    and labels from a batch, that shows the network's top prediction along
+    with its probability, alongside the actual label, coloring this
+    information based on whether the prediction was correct or not.
+    Uses the "images_to_probs" function.
+    '''
+    preds, probs = images_to_probs(net, images)
+    # plot the images in the batch, along with predicted and true labels
+    fig = plt.figure(figsize=(12, 48))
+    for idx in np.arange(4):
+        ax = fig.add_subplot(1, 4, idx+1, xticks=[], yticks=[])
+        matplotlib_imshow(images[idx], one_channel=False)
+        ax.set_title("{0}, {1:.1f}%\n(label: {2})".format(
+            classes[preds[idx]],
+            probs[idx] * 100.0,
+            classes[labels[idx]]),
+                    color=("green" if preds[idx]==labels[idx].item() else "red"))
+    return fig
+
 def train(epoch, model):
     model.train()
+    running_loss=0
     for batch_idx, (data, target) in enumerate(train_loader):
 
         optimizer.zero_grad()
@@ -68,10 +126,24 @@ def train(epoch, model):
         loss = F.nll_loss(output, target)
         loss.backward()
         optimizer.step()
+        running_loss += loss.item()
+
         if batch_idx % 100 == 0:
             print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                 epoch, batch_idx * len(data), len(train_loader.dataset),
                        100. * batch_idx / len(train_loader), loss.item()))
+
+            writer.add_scalar('training loss',
+                              loss.item(),
+                              epoch * len(train_loader) + batch_idx)
+
+            # ...log a Matplotlib Figure showing the model's predictions on a
+            # random mini-batch
+            writer.add_figure('predictions vs. actuals',
+                              plot_classes_preds(model, data, labels),
+                              global_step=epoch * len(train_loader) + batch_idx)
+            running_loss = 0.0
+        writer.close()
 
 
 def test(model):
@@ -98,6 +170,6 @@ def test(model):
 if __name__ == "__main__":
 
 
-    for epoch in range(0, 1):
+    for epoch in range(0, 10):
         train(epoch, model_cnn)
         test(model_cnn)
