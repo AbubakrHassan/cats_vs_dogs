@@ -26,3 +26,7 @@ Note for this to work you need the dataset [cats_vs_dogs](https://www.kaggle.com
 ### Training loss
 
 ![Training loss](https://github.com/AbubakrHassan/cats_vs_dogs/blob/master/images/loss.png)
+
+### Predictions
+
+![Training loss](https://github.com/AbubakrHassan/cats_vs_dogs/blob/master/images/predictions.png)
