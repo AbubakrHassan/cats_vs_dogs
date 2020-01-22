@@ -48,7 +48,7 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 accuracy_list = []
 
 # Training settings
-n_features = 25  # number of feature maps
+n_features = 6  # number of feature maps
 
 parser = argparse.ArgumentParser(description='Train and test one of two CNN architectures')
 parser.add_argument('--model', type=str,
